@@ -45,165 +45,155 @@ For a first example, plot scale product on horizontal,
 
 (function() {
 
-var time = 1e-1,
-    bits = 16,
-    avail_freq = [31e3, 1e6, 2e6, 4e6, 8e6, 12e6, 16e6, 32e6, 48e6, 64e6],
-    avail_prescale = [
-        ...Array(16).keys()
-    ].map(i => 2**i),
-    avail_postscale = [
-        ...Array(16).keys()
-    ].map(i => i + 1);
+// initialised on parse
+var time, valueMax, availFreq, allScales, graph;
 
 const 
-    value_max = 2**bits - 1,
-    all_scales = [
-        ...new Set(
-            avail_prescale.flatMap(
-                prescale => avail_postscale.map(
-                    postscale => prescale * postscale
-                )
-            )
-        )
-    ];
+    feasibilityPoints = [],
+    implementationPoints = [],
+    scaleLabels = [];
 
-function make_feasibility_points() {
+function fillFeasibilityPoints() {
+    feasibilityPoints.length = 0;
+
     const 
-        freq_bottom = Math.min(...avail_freq),
-        freq_top    = Math.max(...avail_freq),
-        scale_left  = Math.min(...all_scales),
-        scale_right = Math.max(...all_scales);
+        freqBottom = Math.min(...availFreq),
+        freqTop    = Math.max(...availFreq),
+        scaleLeft  = Math.min(...allScales),
+        scaleRight = Math.max(...allScales);
 
     const
-        freq_sw = scale_left/time,
-        freq_se = scale_right/time,
-        freq_nw = freq_sw * value_max,
-        freq_ne = freq_se * value_max;
+        freqSW = scaleLeft/time,
+        freqSE = scaleRight/time,
+        freqNW = freqSW * valueMax,
+        freqNE = freqSE * valueMax;
         
-    const points = [];
-
-    if (freq_sw < freq_bottom) {
-        var scale_sw = freq_bottom*time / value_max;
-        if (scale_sw < scale_left) {
-            scale_sw = scale_left;
-            if (freq_nw < freq_top) {
-                points.push(
+    if (freqSW < freqBottom) {
+        var scaleSW = freqBottom*time / valueMax;
+        if (scaleSW < scaleLeft) {
+            scaleSW = scaleLeft;
+            if (freqNW < freqTop) {
+                feasibilityPoints.push(
                     // west corner (obtuse)
-                    {y: scale_left/time * value_max, x: scale_left}
+                    {y: scaleLeft/time * valueMax, x: scaleLeft}
                 );
             }
         }
 
-        points.push(
+        feasibilityPoints.push(
             // southwest corner (square)
-            {y: freq_bottom, x: scale_sw},
+            {y: freqBottom, x: scaleSW},
             // southeast corner (obtuse)
-            {y: freq_bottom, x: Math.min(scale_right, freq_bottom*time)},
+            {y: freqBottom, x: Math.min(scaleRight, freqBottom*time)},
         );
     }
     else {
-        points.push(
+        feasibilityPoints.push(
             // southwest corner (acute)
-            {y: freq_sw, x: scale_left}
+            {y: freqSW, x: scaleLeft}
         );
     }
     
-    if (freq_ne > freq_top) {
-        var scale_ne = freq_top*time;
-        if (scale_ne > scale_right) {
-            scale_ne = scale_right;
-            if (freq_se > freq_bottom) {
-                points.push(
+    if (freqNE > freqTop) {
+        var scaleNE = freqTop*time;
+        if (scaleNE > scaleRight) {
+            scaleNE = scaleRight;
+            if (freqSE > freqBottom) {
+                feasibilityPoints.push(
                     // east corner (obtuse)
-                    {y: scale_right/time, x: scale_right}
+                    {y: scaleRight/time, x: scaleRight}
                 );
             }
         }
 
-        points.push(
+        feasibilityPoints.push(
             // northeast corner (square)
-            {y: freq_top, x: scale_ne},
+            {y: freqTop, x: scaleNE},
             // northwest corner (obtuse)
-            {y: freq_top, x: Math.max(scale_left,  freq_top*time / value_max)},
+            {y: freqTop, x: Math.max(scaleLeft,  freqTop*time / valueMax)},
         );
     }
     else {
-        points.push(
+        feasibilityPoints.push(
             // northeast corner (acute)
-            {y: freq_ne, x: scale_right}
+            {y: freqNE, x: scaleRight}
         );
     }
     
     // close loop
-    points.push(points[0]);
-
-    return points;
+    feasibilityPoints.push(feasibilityPoints[0]);
 }
 
-function make_implementation_points() {
-    return avail_freq.flatMap(freq => {
-        // We could do a naive filter(), but that doesn't capture the fact that there will be:
-        //   0 or more out-of-range,
-        //   0 or more in-range, and then
-        //   0 or more out-of-range, in that order.
-        // The best approach to finding both bounds would be a bisection, but isn't built into JS.
-        // Whatever.
-        const row = [],
-            scale_max = time*freq,
-            scale_min = scale_max / value_max, 
-            start = all_scales.findIndex(
-                scale =>  scale >= scale_min
-            );
+function fillImplementationPoints() {
+    implementationPoints.length = 0;
 
-        if (start != -1) {
-            all_scales.slice(start).every(scale => {
-                if (scale > scale_max)
-                    return false;
-                row.push({x: scale, y: freq});
-                return true;
-            });
-        }
-        return row;
-    });
+    implementationPoints.push(
+        ...availFreq.flatMap(
+            freq => {
+                // We could do a naive filter(), but that doesn't capture the fact that there will be:
+                //   0 or more out-of-range,
+                //   0 or more in-range, and then
+                //   0 or more out-of-range, in that order.
+                // The best approach to finding both bounds would be a bisection, but isn't built into JS.
+                // Whatever.
+                const row = [],
+                    scaleMax = time*freq,
+                    scaleMin = scaleMax / valueMax, 
+                    start = allScales.findIndex(
+                        scale =>  scale >= scaleMin
+                    );
+
+                if (start != -1) {
+                    allScales.slice(start).every(scale => {
+                        if (scale > scaleMax)
+                            return false;
+                        row.push({x: scale, y: freq});
+                        return true;
+                    });
+                }
+                return row;
+            }
+        )
+    );
 }
 
-const 
-    feasibility_points = make_feasibility_points(),
-    implementation_points = make_implementation_points(),
-    scale_labels = [
+function fillScaleLabels() {
+    scaleLabels.length = 0;
+    scaleLabels.push(
         ...new Set(
-            feasibility_points
-            .concat(implementation_points)
+            feasibilityPoints
+            .concat(implementationPoints)
             .map(xy => xy.x)
         )
-    ];
-
-const 
-    locale=undefined,
-    freqFmt = new Intl.NumberFormat(
-        locale, {
-            notation: 'engineering', style: 'decimal', useGrouping: false,
-        }
-    ),
-    timeFmt = new Intl.NumberFormat(
-        locale, {
-            notation: 'engineering', style: 'decimal', useGrouping: false,
-        }
-    ),
-    scaleFmt = new Intl.NumberFormat(
-        locale, {
-            notation: 'standard', style: 'decimal', useGrouping: true,
-        }
-    ),
-    timerFmt = scaleFmt,
-    errorFmt = new Intl.NumberFormat(
-        locale, {
-            notation: 'scientific', style: 'decimal', useGrouping: true,
-        }
     );
+}
 
-function tooltipCallback(items) {
-    return items.flatMap(item => {
+function makeTooltipCallback() {
+    const 
+        locale=undefined,
+        freqFmt = new Intl.NumberFormat(
+            locale, {
+                notation: 'engineering', style: 'decimal', useGrouping: false,
+            }
+        ),
+        timeFmt = new Intl.NumberFormat(
+            locale, {
+                notation: 'engineering', style: 'decimal', useGrouping: false,
+            }
+        ),
+        scaleFmt = new Intl.NumberFormat(
+            locale, {
+                notation: 'standard', style: 'decimal', useGrouping: true,
+            }
+        ),
+        timerFmt = scaleFmt,
+        errorFmt = new Intl.NumberFormat(
+            locale, {
+                notation: 'scientific', style: 'decimal', useGrouping: true,
+            }
+        );
+
+    return items => items.flatMap(item => {
         const 
             scale = item.parsed.x,
             freq = item.parsed.y,
@@ -240,7 +230,7 @@ const config = {
             },
             tooltip: {
                 callbacks: {
-                    title: tooltipCallback
+                    title: makeTooltipCallback()
                 }
             }
         },
@@ -267,24 +257,73 @@ const config = {
                 label: 'Feasible frequency region',
                 type: 'line',
                 borderColor: '#cbeac9',
-                data: feasibility_points,
+                data: feasibilityPoints,
                 order: 2
             },
             {
                 label: 'Implementable',
                 type: 'scatter',
                 borderColor: '#75a6d1',
-                data: implementation_points,
+                data: implementationPoints,
                 order: 1
             }
         ],
-        labels: scale_labels
+        labels: scaleLabels
     }
 };
 
+function updateGraph() {
+    fillFeasibilityPoints();
+    fillImplementationPoints();
+    fillScaleLabels();
+    graph.update();
+}
+
+function attachHandlers() {
+    const timeInput = document.getElementById('time');
+    const bitsInput = document.getElementById('bits');
+    const freqInput = document.getElementById('freq');
+
+    function parseTime() {
+        time = parseFloat(timeInput.value);
+    }
+    function parseBits() {
+        const bits = parseInt(bitsInput.value);
+        valueMax = 2**bits - 1;
+    }
+    function parseFreq() {
+        availFreq = freqInput.value.split(',').map(parseFloat);
+    }
+    function parseScale() {
+        allScales = [1, 2, 4, 8, 16];
+    }
+
+    timeInput.addEventListener(
+        'change', () => {parseTime(); updateGraph()});
+    bitsInput.addEventListener(
+        'change', () => {parseBits(); updateGraph()});
+    freqInput.addEventListener(
+        'change', () => {parseFreq(); updateGraph()});
+    [
+        'scale1', 'scale2',
+        'scale3_exp', 'scale3_min', 'scale3_max',
+        'scale4_exp', 'scale4_min', 'scale4_max',
+    ].forEach(id =>
+        document.getElementById(id).addEventListener(
+            'change', () => {parseScale(); updateGraph()})
+    );
+    
+    parseTime();
+    parseBits();
+    parseFreq();
+    parseScale();
+}
+
 window.onload = function () {
     const ctx = document.getElementById('chart').getContext('2d');
-    new Chart(ctx, config);
+    graph = new Chart(ctx, config);
+    attachHandlers();
+    updateGraph();
 };
 
 })();
