@@ -26,6 +26,10 @@ function fillFeasibilityPoints() {
         freqSE = scaleRight/time,
         freqNW = freqSW * valueMax,
         freqNE = freqSE * valueMax;
+
+    if (freqNE < freqBottom || freqSW > freqTop)
+        // No feasible region
+        return;
         
     if (freqSW < freqBottom) {
         var scaleSW = freqBottom*time / valueMax;
