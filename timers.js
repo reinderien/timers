@@ -187,8 +187,7 @@ const
     ),
     timeFmt = new Intl.NumberFormat(
         locale, {
-            notation: 'engineering', style: 'unit', useGrouping: false, 
-            unitDisplay:'short', unit:'second',
+            notation: 'engineering', style: 'decimal', useGrouping: false,
         }
     ),
     scaleFmt = new Intl.NumberFormat(
@@ -224,8 +223,8 @@ function tooltipCallback(items) {
             'scale = ' + scaleFmt.format(scale),
             'tmr_idl = ' + timerFmt.format(valueIdeal),
             'tmr_act = ' + timerFmt.format(valueActual),
-            't_idl = ' + timeFmt.format(time),
-            't_act = ' + timeFmt.format(timeActual),
+            't_idl = ' + timeFmt.format(time) + ' s',
+            't_act = ' + timeFmt.format(timeActual) + ' s',
             'rel_err = ' + errorFmt.format(error),
         ];
     });
