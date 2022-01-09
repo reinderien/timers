@@ -55,6 +55,8 @@ const
     implementationPoints = [],
     scaleLabels = [];
 
+function sortPredicate(a, b) { return a - b; }
+
 function fillFeasibilityPoints() {
     feasibilityPoints.length = 0;
 
@@ -170,6 +172,7 @@ function fillScaleLabels() {
             .map(xy => xy.x)
         )
     );
+    scaleLabels.sort(sortPredicate);
 }
 
 function makeTooltipCallback() {
@@ -262,7 +265,36 @@ function attachHandlers() {
         availFreq = freqInput.value.split(',').map(parseFloat);
     }
     function parseScale() {
-        allScales = [1, 2, 4, 8, 16];
+        const specified = specifiedScalerInputs.map(
+            input => input.value.split(',').map(s => parseInt(s))
+        );
+        const ranges = rangeScaleInputs.map(
+            inputs => {
+                const 
+                    min = parseInt(inputs.min.value),
+                    max = parseInt(inputs.max.value);
+                const series = [
+                    ...Array(max - min).keys()
+                ].map(x => x + min);
+                if (inputs.exp.checked)
+                    return series.map(x => 1 << x);
+                return series;
+            }
+        );
+        allScales = [
+            ...new Set(
+                specified[0].flatMap(s1 =>
+                    specified[1].flatMap(s2 =>
+                        ranges[0].flatMap(s3 =>
+                            ranges[1].map(s4 =>
+                                s1 * s2 * s3 * s4
+                            )
+                        )
+                    )
+                )
+            )
+        ];
+        allScales.sort(sortPredicate);
     }
 
     timeInput.addEventListener(
