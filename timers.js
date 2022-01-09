@@ -236,7 +236,7 @@ const config = {
         plugins: {
             title: {
                 display: true,
-                text: 'Frequency versus Scale'
+                text: 'Feasible timer parameter space'
             },
             tooltip: {
                 callbacks: {
