@@ -55,19 +55,19 @@ var time = 1e-1,
         ...Array(16).keys()
     ].map(i => i + 1);
 
-function make_feasibility_points() {
-    const
-        value_max = 2**bits - 1,
-        all_scales = [
-            ...new Set(
-                avail_prescale.flatMap(
-                    prescale => avail_postscale.map(
-                        postscale => prescale * postscale
-                    )
+const 
+    value_max = 2**bits - 1,
+    all_scales = [
+        ...new Set(
+            avail_prescale.flatMap(
+                prescale => avail_postscale.map(
+                    postscale => prescale * postscale
                 )
             )
-        ];
+        )
+    ];
 
+function make_feasibility_points() {
     const 
         freq_bottom = Math.min(...avail_freq),
         freq_top    = Math.max(...avail_freq),
@@ -140,11 +140,41 @@ function make_feasibility_points() {
     return points;
 }
 
+function make_implementation_points() {
+    return avail_freq.flatMap(freq => {
+        // We could do a naive filter(), but that doesn't capture the fact that there will be:
+        //   0 or more out-of-range,
+        //   0 or more in-range, and then
+        //   0 or more out-of-range, in that order.
+        // The best approach to finding both bounds would be a bisection, but isn't built into JS.
+        // Whatever.
+        const row = [],
+            scale_max = time*freq,
+            scale_min = scale_max / value_max, 
+            start = all_scales.findIndex(
+                scale =>  scale >= scale_min
+            );
+
+        if (start != -1) {
+            all_scales.slice(start).every(scale => {
+                if (scale > scale_max)
+                    return false;
+                row.push({x: scale, y: freq});
+                return true;
+            });
+        }
+        return row;
+    });
+}
+
 const 
     feasibility_points = make_feasibility_points(),
+    implementation_points = make_implementation_points(),
     scale_labels = [
         ...new Set(
-            feasibility_points.map(xy => xy.x)
+            feasibility_points
+            .concat(implementation_points)
+            .map(xy => xy.x)
         )
     ];
 
@@ -174,35 +204,34 @@ const
     );
 
 function tooltipCallback(items) {
-    // If we wanted to process all overlapping points, we'd call items.flatMap; instead
-    // let's drop all except the first one
-    const item = items[0],
-        scale = item.parsed.x,
-        freq = item.parsed.y,
-        valueIdeal = -time * freq / scale;
+    return items.flatMap(item => {
+        const 
+            scale = item.parsed.x,
+            freq = item.parsed.y,
+            valueIdeal = -time * freq / scale;
 
-    if (item.dataset.label == 'Feasible freq')
+        if (item.dataset.label == 'Feasible frequency region')
+            return [
+                'Scale limit: ' + scaleFmt.format(scale),
+                'Timer limit: ' + timerFmt.format(valueIdeal),
+            ];
+        
+        const valueActual = Math.round(valueIdeal),
+            timeActual = -valueActual * scale / freq,
+            error = timeActual/time - 1;
         return [
-            'Scale limit: ' + scaleFmt.format(scale),
-            'Timer limit: ' + timerFmt.format(valueIdeal),
+            'f = ' + freqFmt.format(freq) + ' Hz',
+            'scale = ' + scaleFmt.format(scale),
+            'tmr_idl = ' + timerFmt.format(valueIdeal),
+            'tmr_act = ' + timerFmt.format(valueActual),
+            't_idl = ' + timeFmt.format(time),
+            't_act = ' + timeFmt.format(timeActual),
+            'rel_err = ' + errorFmt.format(error),
         ];
-    
-    const valueActual = Math.round(valueIdeal),
-        timeActual = -valueActual * scale / freq,
-        error = timeActual/time - 1;
-    return [
-        'f = ' + freqFmt.format(freq) + ' Hz',
-        'scale = ' + scaleFmt.format(scale),
-        'tmr_idl = ' + timerFmt.format(valueIdeal),
-        'tmr_act = ' + timerFmt.format(valueActual),
-        't_idl = ' + timeFmt.format(time),
-        't_act = ' + timeFmt.format(timeActual),
-        'rel_err = ' + errorFmt.format(error),
-    ];
+    });
 }
 
 const config = {
-    type: 'line',
     options: {
         responsive: true,
         plugins: {
@@ -211,7 +240,6 @@ const config = {
                 text: 'Frequency versus Scale'
             },
             tooltip: {
-                mode: 'index',
                 callbacks: {
                     title: tooltipCallback
                 }
@@ -237,9 +265,18 @@ const config = {
     data: {
         datasets: [
             {
-                label: 'Feasible freq',
-                borderColor: '#b8d3af',
-                data: feasibility_points
+                label: 'Feasible frequency region',
+                type: 'line',
+                borderColor: '#cbeac9',
+                data: feasibility_points,
+                order: 2
+            },
+            {
+                label: 'Implementable',
+                type: 'scatter',
+                borderColor: '#75a6d1',
+                data: implementation_points,
+                order: 1
             }
         ],
         labels: scale_labels
