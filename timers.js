@@ -48,6 +48,8 @@ For a first example, plot scale product on horizontal,
 // initialised on parse
 var time, valueMax, availFreq, allScales, graph;
 
+// these references stay in-place and associated to the graph config;
+// their contents are discarded and replaced on update
 const 
     feasibilityPoints = [],
     implementationPoints = [],
@@ -140,16 +142,18 @@ function fillImplementationPoints() {
                     scaleMax = time*freq,
                     scaleMin = scaleMax / valueMax, 
                     start = allScales.findIndex(
-                        scale =>  scale >= scaleMin
+                        scale => scale >= scaleMin
                     );
 
                 if (start != -1) {
-                    allScales.slice(start).every(scale => {
-                        if (scale > scaleMax)
-                            return false;
-                        row.push({x: scale, y: freq});
-                        return true;
-                    });
+                    allScales.slice(start).every(
+                        scale => {
+                            if (scale > scaleMax)
+                                return false;
+                            row.push({x: scale, y: freq});
+                            return true;
+                        }
+                    );
                 }
                 return row;
             }
@@ -193,31 +197,95 @@ function makeTooltipCallback() {
             }
         );
 
-    return items => items.flatMap(item => {
-        const 
-            scale = item.parsed.x,
-            freq = item.parsed.y,
-            valueIdeal = -time * freq / scale;
+    return items => items.flatMap(
+        item => {
+            const 
+                scale = item.parsed.x,
+                freq = item.parsed.y,
+                valueIdeal = -time * freq / scale;
 
-        if (item.dataset.label == 'Feasible frequency region')
+            if (item.dataset.label == 'Feasible frequency region')
+                return [
+                    'Scale limit: ' + scaleFmt.format(scale),
+                    'Timer limit: ' + timerFmt.format(valueIdeal),
+                ];
+            
+            const valueActual = Math.round(valueIdeal),
+                timeActual = -valueActual * scale / freq,
+                error = timeActual/time - 1;
             return [
-                'Scale limit: ' + scaleFmt.format(scale),
-                'Timer limit: ' + timerFmt.format(valueIdeal),
+                'f = ' + freqFmt.format(freq) + ' Hz',
+                'scale = ' + scaleFmt.format(scale),
+                'tmr_idl = ' + timerFmt.format(valueIdeal),
+                'tmr_act = ' + timerFmt.format(valueActual),
+                't_idl = ' + timeFmt.format(time) + ' s',
+                't_act = ' + timeFmt.format(timeActual) + ' s',
+                'rel_err = ' + errorFmt.format(error),
             ];
-        
-        const valueActual = Math.round(valueIdeal),
-            timeActual = -valueActual * scale / freq,
-            error = timeActual/time - 1;
-        return [
-            'f = ' + freqFmt.format(freq) + ' Hz',
-            'scale = ' + scaleFmt.format(scale),
-            'tmr_idl = ' + timerFmt.format(valueIdeal),
-            'tmr_act = ' + timerFmt.format(valueActual),
-            't_idl = ' + timeFmt.format(time) + ' s',
-            't_act = ' + timeFmt.format(timeActual) + ' s',
-            'rel_err = ' + errorFmt.format(error),
-        ];
-    });
+        }
+    );
+}
+
+function updateGraph() {
+    fillFeasibilityPoints();
+    fillImplementationPoints();
+    fillScaleLabels();
+    graph.update();
+}
+
+function attachHandlers() {
+    const 
+        timeInput = document.getElementById('time'),
+        bitsInput = document.getElementById('bits'),
+        freqInput = document.getElementById('freq'),
+        specifiedScalerInputs = [
+            '1', '2'
+        ].map(id => document.getElementById('scale' + id)),
+        rangeScaleInputs = [
+            '3', '4'
+        ].map(
+            id => ({
+                exp: document.getElementById('scale' + id + '_exp'),
+                min: document.getElementById('scale' + id + '_min'),
+                max: document.getElementById('scale' + id + '_max')
+            })
+        );
+
+    function parseTime() {
+        time = parseFloat(timeInput.value);
+    }
+    function parseBits() {
+        const bits = parseInt(bitsInput.value);
+        valueMax = 2**bits - 1;
+    }
+    function parseFreq() {
+        availFreq = freqInput.value.split(',').map(parseFloat);
+    }
+    function parseScale() {
+        allScales = [1, 2, 4, 8, 16];
+    }
+
+    timeInput.addEventListener(
+        'change', () => {parseTime(); updateGraph()});
+    bitsInput.addEventListener(
+        'change', () => {parseBits(); updateGraph()});
+    freqInput.addEventListener(
+        'change', () => {parseFreq(); updateGraph()});
+
+    function handleScale(input) {
+        input.addEventListener(
+            'change', () => {parseScale(); updateGraph()}
+        );
+    }
+    specifiedScalerInputs.forEach(handleScale);
+    rangeScaleInputs.forEach(
+        rangeScale => Object.values(rangeScale).forEach(handleScale)
+    );
+    
+    parseTime();
+    parseBits();
+    parseFreq();
+    parseScale();
 }
 
 const config = {
@@ -271,53 +339,6 @@ const config = {
         labels: scaleLabels
     }
 };
-
-function updateGraph() {
-    fillFeasibilityPoints();
-    fillImplementationPoints();
-    fillScaleLabels();
-    graph.update();
-}
-
-function attachHandlers() {
-    const timeInput = document.getElementById('time');
-    const bitsInput = document.getElementById('bits');
-    const freqInput = document.getElementById('freq');
-
-    function parseTime() {
-        time = parseFloat(timeInput.value);
-    }
-    function parseBits() {
-        const bits = parseInt(bitsInput.value);
-        valueMax = 2**bits - 1;
-    }
-    function parseFreq() {
-        availFreq = freqInput.value.split(',').map(parseFloat);
-    }
-    function parseScale() {
-        allScales = [1, 2, 4, 8, 16];
-    }
-
-    timeInput.addEventListener(
-        'change', () => {parseTime(); updateGraph()});
-    bitsInput.addEventListener(
-        'change', () => {parseBits(); updateGraph()});
-    freqInput.addEventListener(
-        'change', () => {parseFreq(); updateGraph()});
-    [
-        'scale1', 'scale2',
-        'scale3_exp', 'scale3_min', 'scale3_max',
-        'scale4_exp', 'scale4_min', 'scale4_max',
-    ].forEach(id =>
-        document.getElementById(id).addEventListener(
-            'change', () => {parseScale(); updateGraph()})
-    );
-    
-    parseTime();
-    parseBits();
-    parseFreq();
-    parseScale();
-}
 
 window.onload = function () {
     const ctx = document.getElementById('chart').getContext('2d');
