@@ -1,11 +1,13 @@
 (function() {
 
+"use strict";
+
 // initialised on parse
 var time, valueMax, availFreq, allScales, graph;
 
 // these references stay in-place and associated to the graph config;
 // their contents are discarded and replaced on update
-const 
+const
     feasibilityPoints = [],
     implementationPoints = [],
     scaleLabels = [];
@@ -15,10 +17,10 @@ function sortPredicate(a, b) { return a - b; }
 function fillFeasibilityPoints() {
     feasibilityPoints.length = 0;
 
-    const 
+    const
         freqBottom = Math.min(...availFreq), scaleLeft  = Math.min(...allScales),
         freqTop    = Math.max(...availFreq), scaleRight = Math.max(...allScales);
-       
+
     const
         freqSW = scaleLeft/time,  freqNW = freqSW * valueMax,
         freqSE = scaleRight/time, freqNE = freqSE * valueMax;
@@ -26,7 +28,7 @@ function fillFeasibilityPoints() {
     function fillSymmetric(
         sign,
         freqAcute, freqObtuse,
-        freqCloseLimit, freqFarLimit, 
+        freqCloseLimit, freqFarLimit,
         scaleCloseLimit, scaleFarLimit,
         growFactor, shrinkFactor
     ) {
@@ -61,7 +63,7 @@ function fillFeasibilityPoints() {
 
         return true;
     }
-    
+
     if (!fillSymmetric(
         1,                      // sign
         freqSW, freqNW,         // freqAcute, freqObtuse
@@ -99,7 +101,7 @@ function fillImplementationPoints() {
                 // Whatever.
                 const row = [],
                     scaleMax = time*freq,
-                    scaleMin = scaleMax / valueMax, 
+                    scaleMin = scaleMax / valueMax,
                     start = allScales.findIndex(
                         scale => scale >= scaleMin
                     );
@@ -133,7 +135,7 @@ function fillScaleLabels() {
 }
 
 function makeTooltipCallback() {
-    const 
+    const
         locale=undefined,
         freqFmt = new Intl.NumberFormat(
             locale, {
@@ -159,7 +161,7 @@ function makeTooltipCallback() {
 
     return items => items.flatMap(
         item => {
-            const 
+            const
                 scale = item.parsed.x,
                 freq = item.parsed.y,
                 valueIdeal = -time * freq / scale;
@@ -169,7 +171,7 @@ function makeTooltipCallback() {
                     'Scale limit: ' + scaleFmt.format(scale),
                     'Timer limit: ' + timerFmt.format(valueIdeal),
                 ];
-            
+
             const valueActual = Math.round(valueIdeal),
                 timeActual = -valueActual * scale / freq,
                 error = timeActual/time - 1;
@@ -194,7 +196,7 @@ function updateGraph() {
 }
 
 function attachHandlers() {
-    const 
+    const
         timeInput = document.getElementById('time'),
         bitsInput = document.getElementById('bits'),
         freqInput = document.getElementById('freq'),
@@ -227,7 +229,7 @@ function attachHandlers() {
         );
         const ranges = rangeScaleInputs.map(
             inputs => {
-                const 
+                const
                     min = parseInt(inputs.min.value),
                     max = parseInt(inputs.max.value);
                 const series = [
@@ -270,7 +272,7 @@ function attachHandlers() {
     rangeScaleInputs.forEach(
         rangeScale => Object.values(rangeScale).forEach(handleScale)
     );
-    
+
     parseTime();
     parseBits();
     parseFreq();
