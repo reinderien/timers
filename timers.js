@@ -4,14 +4,15 @@
 
 // initialised on parse
 var time, valueMax, availFreq, allScales, 
-    scaleFreqGraph, scaleValueGraph;
+    scaleFreqGraph, scaleValueGraph, valueFreqGraph;
 
 // these references stay in-place and associated to the graph config;
 // their contents are discarded and replaced on update
 const
     scaleFreqFeasiblePoints = [],
     scaleFreqImplPoints = [],
-    scaleValueImplPoints = [];
+    scaleValueImplPoints = [],
+    valueFreqImplPoints = [];
 
 function sortPredicate(a, b) { return a - b; }
 
@@ -127,9 +128,21 @@ function fillScaleValueImplPoints() {
     scaleValueImplPoints.length = 0;
     scaleValueImplPoints.push(
         ...allScales.flatMap(
+            // There aren't many frequencies (compared to scales and values), so just filter this
             scale => availFreq
                 .map(freq => ({x: scale, y: Math.round(time * freq / scale)}))
                 .filter(point => point.y >= 1 && point.y <= valueMax)
+        )
+    )
+}
+
+function fillValueFreqImplPoints() {
+    valueFreqImplPoints.length = 0;
+    valueFreqImplPoints.push(
+        ...availFreq.flatMap(
+            freq => allScales
+                .map(scale => ({x: time*freq/scale, y: freq}))
+                .filter(point => point.x >= 1 && point.x <= valueMax)
         )
     )
 }
@@ -195,6 +208,9 @@ function updateGraphs() {
 
     fillScaleValueImplPoints();
     scaleValueGraph.update();
+
+    fillValueFreqImplPoints();
+    valueFreqGraph.update();
 }
 
 function attachHandlers() {
@@ -302,7 +318,7 @@ const scaleFreqConfig = {
             y: {
                 title: {
                     display: true,
-                    text: 'freq'
+                    text: 'freq (Hz)'
                 },
                 type: 'logarithmic'
             }
@@ -349,7 +365,7 @@ const scaleValueConfig = {
             y: {
                 title: {
                     display: true,
-                    text: 'timer value'
+                    text: 'timer value (negated)'
                 },
                 type: 'logarithmic'
             }
@@ -375,6 +391,53 @@ const scaleValueConfig = {
     }
 };
 
+const valueFreqConfig = {
+    options: {
+        responsive: true,
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    // title: makeTooltipCallback()
+                }
+            }
+        },
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: 'timer value (negated)'
+                },
+                type: 'logarithmic'
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: 'freq (Hz)'
+                },
+                type: 'logarithmic'
+            }
+        },
+    },
+    data: {
+        datasets: [
+            /*{
+                label: 'Feasible frequency region',
+                type: 'line',
+                borderColor: '#cbeac9',
+                data: scaleFreqFeasiblePoints,
+                order: 2
+            },*/
+            {
+                label: 'Implementable',
+                type: 'scatter',
+                borderColor: '#75a6d1',
+                data: valueFreqImplPoints,
+                order: 1
+            }
+        ]
+    }
+};
+
 window.onload = function () {
     scaleFreqGraph = new Chart(
         document.getElementById('scaleFreqChart').getContext('2d'), 
@@ -382,6 +445,9 @@ window.onload = function () {
     scaleValueGraph = new Chart(
         document.getElementById('scaleValueChart').getContext('2d'), 
         scaleValueConfig);
+    valueFreqGraph = new Chart(
+        document.getElementById('valueFreqChart').getContext('2d'), 
+        valueFreqConfig);
     attachHandlers();
     updateGraphs();
 };
