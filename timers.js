@@ -3,19 +3,22 @@
 "use strict";
 
 // initialised on parse
-var time, valueMax, availFreq, allScales, graph;
+var time, valueMax, availFreq, allScales, 
+    scaleFreqGraph, scaleValueGraph;
 
 // these references stay in-place and associated to the graph config;
 // their contents are discarded and replaced on update
 const
-    feasibilityPoints = [],
-    implementationPoints = [],
-    scaleLabels = [];
+    scaleFreqFeasiblePoints = [],
+    scaleFreqImplPoints = [],
+    scaleFreqLabels = [],
+    scaleValueImplPoints = [],
+    scaleValueLabels = [];
 
 function sortPredicate(a, b) { return a - b; }
 
-function fillFeasibilityPoints() {
-    feasibilityPoints.length = 0;
+function fillScaleFreqFeasiblePoints() {
+    scaleFreqFeasiblePoints.length = 0;
 
     const
         freqBottom = Math.min(...availFreq), scaleLeft  = Math.min(...allScales),
@@ -40,14 +43,14 @@ function fillFeasibilityPoints() {
             if (scaleCorner < scaleCloseLimit) {
                 scaleCorner = scaleCloseLimit;
                 if (freqObtuse < freqFarLimit) {
-                    feasibilityPoints.push(
+                    scaleFreqFeasiblePoints.push(
                         // First obtuse corner
                         {y: sign * scaleCloseLimit/time * shrinkFactor, x: sign * scaleCloseLimit}
                     );
                 }
             }
 
-            feasibilityPoints.push(
+            scaleFreqFeasiblePoints.push(
                 // Square corner
                 {y: sign * freqCloseLimit, x: sign * scaleCorner},
                 // Second obtuse corner
@@ -55,7 +58,7 @@ function fillFeasibilityPoints() {
             );
         }
         else {
-            feasibilityPoints.push(
+            scaleFreqFeasiblePoints.push(
                 // Corner (acute)
                 {y: sign * freqAcute, x: sign * scaleCloseLimit}
             );
@@ -79,18 +82,18 @@ function fillFeasibilityPoints() {
         -scaleRight, -scaleLeft, // scaleCloseLimit, scaleFarLimit
         valueMax, 1,             // growFactor, shrinkFactor
     )) {
-        feasibilityPoints.length = 0;
+        scaleFreqFeasiblePoints.length = 0;
         return;
     }
 
     // close loop
-    feasibilityPoints.push(feasibilityPoints[0]);
+    scaleFreqFeasiblePoints.push(scaleFreqFeasiblePoints[0]);
 }
 
-function fillImplementationPoints() {
-    implementationPoints.length = 0;
+function fillScaleFreqImplPoints() {
+    scaleFreqImplPoints.length = 0;
 
-    implementationPoints.push(
+    scaleFreqImplPoints.push(
         ...availFreq.flatMap(
             freq => {
                 // We could do a naive filter(), but that doesn't capture the fact that there will be:
@@ -122,16 +125,31 @@ function fillImplementationPoints() {
     );
 }
 
-function fillScaleLabels() {
-    scaleLabels.length = 0;
-    scaleLabels.push(
+function fillScaleFreqLabels() {
+    scaleFreqLabels.length = 0;
+    scaleFreqLabels.push(
         ...new Set(
-            feasibilityPoints
-            .concat(implementationPoints)
+            scaleFreqFeasiblePoints
+            .concat(scaleFreqImplPoints)
             .map(xy => xy.x)
         )
     );
-    scaleLabels.sort(sortPredicate);
+    scaleFreqLabels.sort(sortPredicate);
+}
+
+function fillScaleValueImplPoints() {
+    scaleValueImplPoints.length = 0;
+    scaleValueImplPoints.push(
+        ...allScales.flatMap(
+            scale => availFreq
+                .map(freq => Math.round(time * freq / scale))
+                .filter(value => value >= 1 && value <= valueMax)
+        )
+    )
+}
+
+function fillScaleValueLabels() {
+
 }
 
 function makeTooltipCallback() {
@@ -188,11 +206,14 @@ function makeTooltipCallback() {
     );
 }
 
-function updateGraph() {
-    fillFeasibilityPoints();
-    fillImplementationPoints();
-    fillScaleLabels();
-    graph.update();
+function updateGraphs() {
+    fillScaleFreqFeasiblePoints();
+    fillScaleFreqImplPoints();
+    fillScaleFreqLabels();
+    scaleFreqGraph.update();
+
+    fillScaleValueImplPoints();
+    scaleValueGraph.update();
 }
 
 function attachHandlers() {
@@ -257,15 +278,15 @@ function attachHandlers() {
     }
 
     timeInput.addEventListener(
-        'change', () => {parseTime(); updateGraph()});
+        'change', () => {parseTime(); updateGraphs()});
     bitsInput.addEventListener(
-        'change', () => {parseBits(); updateGraph()});
+        'change', () => {parseBits(); updateGraphs()});
     freqInput.addEventListener(
-        'change', () => {parseFreq(); updateGraph()});
+        'change', () => {parseFreq(); updateGraphs()});
 
     function handleScale(input) {
         input.addEventListener(
-            'change', () => {parseScale(); updateGraph()}
+            'change', () => {parseScale(); updateGraphs()}
         );
     }
     specifiedScalerInputs.forEach(handleScale);
@@ -279,14 +300,10 @@ function attachHandlers() {
     parseScale();
 }
 
-const config = {
+const scaleFreqConfig = {
     options: {
         responsive: true,
         plugins: {
-            title: {
-                display: true,
-                text: 'Feasible timer parameter space'
-            },
             tooltip: {
                 callbacks: {
                     title: makeTooltipCallback()
@@ -316,26 +333,78 @@ const config = {
                 label: 'Feasible frequency region',
                 type: 'line',
                 borderColor: '#cbeac9',
-                data: feasibilityPoints,
+                data: scaleFreqFeasiblePoints,
                 order: 2
             },
             {
                 label: 'Implementable',
                 type: 'scatter',
                 borderColor: '#75a6d1',
-                data: implementationPoints,
+                data: scaleFreqImplPoints,
                 order: 1
             }
         ],
-        labels: scaleLabels
+        labels: scaleFreqLabels
+    }
+};
+
+const scaleValueConfig = {
+    options: {
+        responsive: true,
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    // title: makeTooltipCallback()
+                }
+            }
+        },
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: 'scale'
+                },
+                type: 'logarithmic'
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: 'timer value'
+                },
+                type: 'logarithmic'
+            }
+        },
+    },
+    data: {
+        datasets: [
+            /*{
+                label: 'Feasible frequency region',
+                type: 'line',
+                borderColor: '#cbeac9',
+                data: scaleFreqFeasiblePoints,
+                order: 2
+            },*/
+            {
+                label: 'Implementable',
+                type: 'scatter',
+                borderColor: '#75a6d1',
+                data: scaleValueImplPoints,
+                order: 1
+            }
+        ],
+        labels: scaleFreqLabels
     }
 };
 
 window.onload = function () {
-    const ctx = document.getElementById('chart').getContext('2d');
-    graph = new Chart(ctx, config);
+    scaleFreqGraph = new Chart(
+        document.getElementById('scaleFreqChart').getContext('2d'), 
+        scaleFreqConfig);
+    scaleValueGraph = new Chart(
+        document.getElementById('scaleValueChart').getContext('2d'), 
+        scaleValueConfig);
     attachHandlers();
-    updateGraph();
+    updateGraphs();
 };
 
 })();

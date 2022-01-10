@@ -10,11 +10,31 @@
     body {
       font-family: 'Calibri', sans-serif;
     }
+    canvas {
+      width: 800px;
+      height: 390px;
+    }
   </style>
 </head>
 
 <body>
-  <canvas id="chart" style="width: 800px; height: 390px;"></canvas>
+  <table>
+    <tbody>
+      <tr>
+        <td>
+          <canvas id="scaleFreqChart"></canvas>
+        </td>
+        <td>
+          <canvas id="valueFreqChart"></canvas>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <canvas id="scaleValueChart"></canvas>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 
   <h2>Parameters</h2>
 

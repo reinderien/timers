@@ -39,7 +39,7 @@ The fundamental equation being modelled is
 
 under the following constraint:
 
-    0 < value < 2^bits
+    1 <= value < 2^bits
 
 Relative error is calculated as:
 
