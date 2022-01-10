@@ -11,9 +11,7 @@ var time, valueMax, availFreq, allScales,
 const
     scaleFreqFeasiblePoints = [],
     scaleFreqImplPoints = [],
-    scaleFreqLabels = [],
-    scaleValueImplPoints = [],
-    scaleValueLabels = [];
+    scaleValueImplPoints = [];
 
 function sortPredicate(a, b) { return a - b; }
 
@@ -125,31 +123,15 @@ function fillScaleFreqImplPoints() {
     );
 }
 
-function fillScaleFreqLabels() {
-    scaleFreqLabels.length = 0;
-    scaleFreqLabels.push(
-        ...new Set(
-            scaleFreqFeasiblePoints
-            .concat(scaleFreqImplPoints)
-            .map(xy => xy.x)
-        )
-    );
-    scaleFreqLabels.sort(sortPredicate);
-}
-
 function fillScaleValueImplPoints() {
     scaleValueImplPoints.length = 0;
     scaleValueImplPoints.push(
         ...allScales.flatMap(
             scale => availFreq
-                .map(freq => Math.round(time * freq / scale))
-                .filter(value => value >= 1 && value <= valueMax)
+                .map(freq => ({x: scale, y: Math.round(time * freq / scale)}))
+                .filter(point => point.y >= 1 && point.y <= valueMax)
         )
     )
-}
-
-function fillScaleValueLabels() {
-
 }
 
 function makeTooltipCallback() {
@@ -209,7 +191,6 @@ function makeTooltipCallback() {
 function updateGraphs() {
     fillScaleFreqFeasiblePoints();
     fillScaleFreqImplPoints();
-    fillScaleFreqLabels();
     scaleFreqGraph.update();
 
     fillScaleValueImplPoints();
@@ -343,8 +324,7 @@ const scaleFreqConfig = {
                 data: scaleFreqImplPoints,
                 order: 1
             }
-        ],
-        labels: scaleFreqLabels
+        ]
     }
 };
 
@@ -391,8 +371,7 @@ const scaleValueConfig = {
                 data: scaleValueImplPoints,
                 order: 1
             }
-        ],
-        labels: scaleFreqLabels
+        ]
     }
 };
 
