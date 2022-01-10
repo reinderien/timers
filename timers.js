@@ -16,73 +16,71 @@ function fillFeasibilityPoints() {
     feasibilityPoints.length = 0;
 
     const 
-        freqBottom = Math.min(...availFreq),
-        freqTop    = Math.max(...availFreq),
-        scaleLeft  = Math.min(...allScales),
-        scaleRight = Math.max(...allScales);
-
+        freqBottom = Math.min(...availFreq), scaleLeft  = Math.min(...allScales),
+        freqTop    = Math.max(...availFreq), scaleRight = Math.max(...allScales);
+       
     const
-        freqSW = scaleLeft/time,
-        freqSE = scaleRight/time,
-        freqNW = freqSW * valueMax,
-        freqNE = freqSE * valueMax;
+        freqSW = scaleLeft/time,  freqNW = freqSW * valueMax,
+        freqSE = scaleRight/time, freqNE = freqSE * valueMax;
 
-    if (freqNE < freqBottom || freqSW > freqTop)
-        // No feasible region
+    function fillSymmetric(
+        sign,
+        freqAcute, freqObtuse,
+        freqCloseLimit, freqFarLimit, 
+        scaleCloseLimit, scaleFarLimit,
+        growFactor, shrinkFactor
+    ) {
+        if (freqAcute > freqFarLimit)
+            return false;  // No feasible region
+
+        if (freqAcute < freqCloseLimit) {
+            var scaleCorner = freqCloseLimit*time / shrinkFactor;
+            if (scaleCorner < scaleCloseLimit) {
+                scaleCorner = scaleCloseLimit;
+                if (freqObtuse < freqFarLimit) {
+                    feasibilityPoints.push(
+                        // First obtuse corner
+                        {y: sign * scaleCloseLimit/time * shrinkFactor, x: sign * scaleCloseLimit}
+                    );
+                }
+            }
+
+            feasibilityPoints.push(
+                // Square corner
+                {y: sign * freqCloseLimit, x: sign * scaleCorner},
+                // Second obtuse corner
+                {y: sign * freqCloseLimit, x: sign * Math.min(scaleFarLimit, freqCloseLimit*time / growFactor)},
+            );
+        }
+        else {
+            feasibilityPoints.push(
+                // Corner (acute)
+                {y: sign * freqAcute, x: sign * scaleCloseLimit}
+            );
+        }
+
+        return true;
+    }
+    
+    if (!fillSymmetric(
+        1,                      // sign
+        freqSW, freqNW,         // freqAcute, freqObtuse
+        freqBottom, freqTop,    // freqCloseLimit, freqFarLimit
+        scaleLeft, scaleRight,  // scaleCloseLimit, scaleFarLimit
+        1, valueMax,            // growFactor, shrinkFactor
+    )) return;
+
+    if (!fillSymmetric(
+        -1,                      // sign
+        -freqNE, -freqSE,        // freqAcute, freqObtuse
+        -freqTop, -freqBottom,   // freqCloseLimit, freqFarLimit
+        -scaleRight, -scaleLeft, // scaleCloseLimit, scaleFarLimit
+        valueMax, 1,             // growFactor, shrinkFactor
+    )) {
+        feasibilityPoints.length = 0;
         return;
-        
-    if (freqSW < freqBottom) {
-        var scaleSW = freqBottom*time / valueMax;
-        if (scaleSW < scaleLeft) {
-            scaleSW = scaleLeft;
-            if (freqNW < freqTop) {
-                feasibilityPoints.push(
-                    // west corner (obtuse)
-                    {y: scaleLeft/time * valueMax, x: scaleLeft}
-                );
-            }
-        }
+    }
 
-        feasibilityPoints.push(
-            // southwest corner (square)
-            {y: freqBottom, x: scaleSW},
-            // southeast corner (obtuse)
-            {y: freqBottom, x: Math.min(scaleRight, freqBottom*time)},
-        );
-    }
-    else {
-        feasibilityPoints.push(
-            // southwest corner (acute)
-            {y: freqSW, x: scaleLeft}
-        );
-    }
-    
-    if (freqNE > freqTop) {
-        var scaleNE = freqTop*time;
-        if (scaleNE > scaleRight) {
-            scaleNE = scaleRight;
-            if (freqSE > freqBottom) {
-                feasibilityPoints.push(
-                    // east corner (obtuse)
-                    {y: scaleRight/time, x: scaleRight}
-                );
-            }
-        }
-
-        feasibilityPoints.push(
-            // northeast corner (square)
-            {y: freqTop, x: scaleNE},
-            // northwest corner (obtuse)
-            {y: freqTop, x: Math.max(scaleLeft,  freqTop*time / valueMax)},
-        );
-    }
-    else {
-        feasibilityPoints.push(
-            // northeast corner (acute)
-            {y: freqNE, x: scaleRight}
-        );
-    }
-    
     // close loop
     feasibilityPoints.push(feasibilityPoints[0]);
 }
