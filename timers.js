@@ -141,13 +141,13 @@ function fillValueFreqImplPoints() {
     valueFreqImplPoints.push(
         ...availFreq.flatMap(
             freq => allScales
-                .map(scale => ({x: time*freq/scale, y: freq}))
+                .map(scale => ({x: Math.round(time * freq / scale), y: freq}))
                 .filter(point => point.x >= 1 && point.x <= valueMax)
         )
     )
 }
 
-function makeTooltipCallback() {
+const renderPoint = (function() {
     const
         locale=undefined,
         freqFmt = new Intl.NumberFormat(
@@ -172,33 +172,37 @@ function makeTooltipCallback() {
             }
         );
 
-    return items => items.flatMap(
-        item => {
-            const
-                scale = item.parsed.x,
-                freq = item.parsed.y,
-                valueIdeal = -time * freq / scale;
+    return function(scale, freq) {
+        const valueIdeal = -time * freq / scale;
 
-            if (item.dataset.label == 'Feasible frequency region')
-                return [
-                    'Scale limit: ' + scaleFmt.format(scale),
-                    'Timer limit: ' + timerFmt.format(valueIdeal),
-                ];
+        const valueActual = Math.round(valueIdeal),
+            timeActual = -valueActual * scale / freq,
+            error = timeActual/time - 1;
+        return [
+            'f = ' + freqFmt.format(freq) + ' Hz',
+            'scale = ' + scaleFmt.format(scale),
+            'tmr_idl = ' + timerFmt.format(valueIdeal),
+            'tmr_act = ' + timerFmt.format(valueActual),
+            't_idl = ' + timeFmt.format(time) + ' s',
+            't_act = ' + timeFmt.format(timeActual) + ' s',
+            'rel_err = ' + errorFmt.format(error),
+        ];
+    }
+})();
 
-            const valueActual = Math.round(valueIdeal),
-                timeActual = -valueActual * scale / freq,
-                error = timeActual/time - 1;
+function tooltipCallback(items) {
+    return items.flatMap(item => {
+        if (item.dataset.label == 'Feasible frequency region')
             return [
-                'f = ' + freqFmt.format(freq) + ' Hz',
-                'scale = ' + scaleFmt.format(scale),
-                'tmr_idl = ' + timerFmt.format(valueIdeal),
-                'tmr_act = ' + timerFmt.format(valueActual),
-                't_idl = ' + timeFmt.format(time) + ' s',
-                't_act = ' + timeFmt.format(timeActual) + ' s',
-                'rel_err = ' + errorFmt.format(error),
+                'Scale limit: ' + scaleFmt.format(scale),
+                'Timer limit: ' + timerFmt.format(valueIdeal),
             ];
-        }
-    );
+
+        const
+            scale = item.parsed.x,
+            freq = item.parsed.y;
+        return renderPoint(scale, freq);
+    });
 }
 
 function updateGraphs() {
@@ -303,7 +307,7 @@ const scaleFreqConfig = {
         plugins: {
             tooltip: {
                 callbacks: {
-                    title: makeTooltipCallback()
+                    title: tooltipCallback
                 }
             }
         },
