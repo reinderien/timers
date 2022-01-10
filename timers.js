@@ -9,15 +9,23 @@ var time, valueMax, availFreq, allScales,
 // these references stay in-place and associated to the graph config;
 // their contents are discarded and replaced on update
 const
-    scaleFreqFeasiblePoints = [],
-    scaleFreqImplPoints = [],
-    scaleValueImplPoints = [],
-    valueFreqImplPoints = [];
+    feasiblePoints = [],
+    implPoints = [];
 
 function sortPredicate(a, b) { return a - b; }
 
-function fillScaleFreqFeasiblePoints() {
-    scaleFreqFeasiblePoints.length = 0;
+function makePoint(freq, scale) {
+    const valueIdeal = time * freq / scale;
+    return {
+        scale: scale,
+        freq: freq,
+        valueIdeal: valueIdeal,
+        valueActual: Math.round(valueIdeal),
+    };
+}
+
+function fillFeasiblePoints() {
+    feasiblePoints.length = 0;
 
     const
         freqBottom = Math.min(...availFreq), scaleLeft  = Math.min(...allScales),
@@ -42,24 +50,24 @@ function fillScaleFreqFeasiblePoints() {
             if (scaleCorner < scaleCloseLimit) {
                 scaleCorner = scaleCloseLimit;
                 if (freqObtuse < freqFarLimit) {
-                    scaleFreqFeasiblePoints.push(
+                    feasiblePoints.push(
                         // First obtuse corner
-                        {freq: sign * scaleCloseLimit/time * shrinkFactor, scale: sign * scaleCloseLimit}
+                        makePoint(sign * scaleCloseLimit/time * shrinkFactor, sign * scaleCloseLimit)
                     );
                 }
             }
 
-            scaleFreqFeasiblePoints.push(
+            feasiblePoints.push(
                 // Square corner
-                {freq: sign * freqCloseLimit, scale: sign * scaleCorner},
+                makePoint(sign * freqCloseLimit, sign * scaleCorner),
                 // Second obtuse corner
-                {freq: sign * freqCloseLimit, scale: sign * Math.min(scaleFarLimit, freqCloseLimit*time / growFactor)},
+                makePoint(sign * freqCloseLimit, sign * Math.min(scaleFarLimit, freqCloseLimit*time / growFactor)),
             );
         }
         else {
-            scaleFreqFeasiblePoints.push(
+            feasiblePoints.push(
                 // Corner (acute)
-                {freq: sign * freqAcute, scale: sign * scaleCloseLimit}
+                makePoint(sign * freqAcute, sign * scaleCloseLimit)
             );
         }
 
@@ -81,92 +89,49 @@ function fillScaleFreqFeasiblePoints() {
         -scaleRight, -scaleLeft, // scaleCloseLimit, scaleFarLimit
         valueMax, 1,             // growFactor, shrinkFactor
     )) {
-        scaleFreqFeasiblePoints.length = 0;
+        feasiblePoints.length = 0;
         return;
     }
 
     // close loop
-    scaleFreqFeasiblePoints.push(scaleFreqFeasiblePoints[0]);
-
-    scaleFreqFeasiblePoints.forEach(point =>
-        // Don't round - this is the idealised limit
-        point.value = time * point.freq / point.scale
-    );
+    feasiblePoints.push(feasiblePoints[0]);
 }
 
-function fillScaleFreqImplPoints() {
-    scaleFreqImplPoints.length = 0;
+function fillImplPoints() {
+    implPoints.length = 0;
+    availFreq.forEach(
+        freq => {
+            // We could do a naive filter(), but that doesn't capture the fact that there will be:
+            //   0 or more out-of-range,
+            //   0 or more in-range, and then
+            //   0 or more out-of-range, in that order.
+            // The best approach to finding both bounds would be a bisection, but isn't built into JS.
+            // Whatever.
+            const
+                scaleMax = time*freq,
+                scaleMin = scaleMax / valueMax,
+                start = allScales.findIndex(
+                    scale => scale >= scaleMin
+                );
 
-    scaleFreqImplPoints.push(
-        ...availFreq.flatMap(
-            freq => {
-                // We could do a naive filter(), but that doesn't capture the fact that there will be:
-                //   0 or more out-of-range,
-                //   0 or more in-range, and then
-                //   0 or more out-of-range, in that order.
-                // The best approach to finding both bounds would be a bisection, but isn't built into JS.
-                // Whatever.
-                const row = [],
-                    scaleMax = time*freq,
-                    scaleMin = scaleMax / valueMax,
-                    start = allScales.findIndex(
-                        scale => scale >= scaleMin
-                    );
-
-                if (start != -1) {
-                    allScales.slice(start).every(
-                        scale => {
-                            if (scale > scaleMax)
-                                return false;
-                            row.push({
-                                scale: scale,
-                                freq: freq,
-                                value: Math.round(time * freq / scale)
-                            });
-                            return true;
-                        }
-                    );
+            if (start == -1)
+                return;
+            
+            allScales.slice(start).every(
+                scale => {
+                    if (scale > scaleMax)
+                        return false;
+                    implPoints.push(makePoint(freq, scale));
+                    return true;
                 }
-                return row;
-            }
-        )
+            );
+        }
     );
 }
 
-function fillScaleValueImplPoints() {
-    scaleValueImplPoints.length = 0;
-    scaleValueImplPoints.push(
-        ...allScales.flatMap(
-            // There aren't many frequencies (compared to scales and values), so just filter this
-            scale => availFreq
-                .map(freq => ({
-                    scale: scale,
-                    freq: freq,
-                    value: Math.round(time * freq / scale),
-                }))
-                .filter(point => point.value >= 1 && point.value <= valueMax)
-        )
-    )
-}
-
-function fillValueFreqImplPoints() {
-    valueFreqImplPoints.length = 0;
-    valueFreqImplPoints.push(
-        ...availFreq.flatMap(
-            freq => allScales
-                .map(scale => ({
-                    scale: scale,
-                    freq: freq,
-                    value: Math.round(time * freq / scale),
-                }))
-                .filter(point => point.value >= 1 && point.value <= valueMax)
-        )
-    )
-}
-
-const renderPoint = (function() {
+const tooltipCallback = (function() {
     const
-        locale=undefined,
+        locale = undefined,
         freqFmt = new Intl.NumberFormat(
             locale, {
                 notation: 'engineering', style: 'decimal', useGrouping: false,
@@ -189,47 +154,38 @@ const renderPoint = (function() {
             }
         );
 
-    return function(item) {
-        const freq = item.raw.freq,
-              scale = item.raw.scale,
-              valueIdeal = -time * freq / scale;
+    return items => items.flatMap(
+        item => {
+            const raw = item.raw;
+            if (item.dataset.label == 'Feasible region')
+                return [
+                    'Scale limit: ' + scaleFmt.format(raw.scale),
+                    'Timer limit: ' + timerFmt.format(raw.valueIdeal),
+                    'Freq limit: ' + freqFmt.format(raw.freq),
+                ];
+            
+            const timeActual = raw.valueActual * raw.scale / raw.freq,
+                error = timeActual/time - 1;
 
-        const valueActual = Math.round(valueIdeal),
-            timeActual = -valueActual * scale / freq,
-            error = timeActual/time - 1;
-        return [
-            'f = ' + freqFmt.format(freq) + ' Hz',
-            'scale = ' + scaleFmt.format(scale),
-            'tmr_idl = ' + timerFmt.format(valueIdeal),
-            'tmr_act = ' + timerFmt.format(valueActual),
-            't_idl = ' + timeFmt.format(time) + ' s',
-            't_act = ' + timeFmt.format(timeActual) + ' s',
-            'rel_err = ' + errorFmt.format(error),
-        ];
-    }
+            return [
+                'f = ' + freqFmt.format(raw.freq) + ' Hz',
+                'scale = ' + scaleFmt.format(raw.scale),
+                'tmr_idl = ' + timerFmt.format(-raw.valueIdeal),
+                'tmr_act = ' + timerFmt.format(-raw.valueActual),
+                't_idl = ' + timeFmt.format(time) + ' s',
+                't_act = ' + timeFmt.format(timeActual) + ' s',
+                'rel_err = ' + errorFmt.format(error),
+            ];
+        }
+    );
 })();
 
-function tooltipCallback(items) {
-    return items.flatMap(item => {
-        if (item.dataset.label == 'Feasible frequency region')
-            return [
-                'Scale limit: ' + scaleFmt.format(scale),
-                'Timer limit: ' + timerFmt.format(valueIdeal),
-            ];
-
-        return renderPoint(item);
-    });
-}
-
 function updateGraphs() {
-    fillScaleFreqFeasiblePoints();
-    fillScaleFreqImplPoints();
+    fillFeasiblePoints();
+    fillImplPoints();
+
     scaleFreqGraph.update();
-
-    fillScaleValueImplPoints();
     scaleValueGraph.update();
-
-    fillValueFreqImplPoints();
     valueFreqGraph.update();
 }
 
@@ -317,16 +273,37 @@ function attachHandlers() {
     parseScale();
 }
 
+const dataConfig = {
+    datasets: [
+        {
+            label: 'Feasible region',
+            type: 'line',
+            borderColor: '#cbeac9',
+            data: feasiblePoints,
+            order: 2
+        },
+        {
+            label: 'Implementable',
+            type: 'scatter',
+            borderColor: '#75a6d1',
+            data: implPoints,
+            order: 1
+        }
+    ]
+};
+
+const plugins = {
+    tooltip: {
+        callbacks: {
+            title: tooltipCallback
+        }
+    }
+};
+
 const scaleFreqConfig = {
     options: {
         responsive: true,
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    title: tooltipCallback
-                }
-            }
-        },
+        plugins: plugins,
         scales: {
             x: {
                 title: {
@@ -348,36 +325,13 @@ const scaleFreqConfig = {
             yAxisKey: 'freq',
         }
     },
-    data: {
-        datasets: [
-            {
-                label: 'Feasible frequency region',
-                type: 'line',
-                borderColor: '#cbeac9',
-                data: scaleFreqFeasiblePoints,
-                order: 2
-            },
-            {
-                label: 'Implementable',
-                type: 'scatter',
-                borderColor: '#75a6d1',
-                data: scaleFreqImplPoints,
-                order: 1
-            }
-        ]
-    }
+    data: dataConfig
 };
 
 const scaleValueConfig = {
     options: {
         responsive: true,
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    title: tooltipCallback
-                }
-            }
-        },
+        plugins: plugins,
         scales: {
             x: {
                 title: {
@@ -396,39 +350,16 @@ const scaleValueConfig = {
         },
         parsing: {
             xAxisKey: 'scale',
-            yAxisKey: 'value',
+            yAxisKey: 'valueIdeal',
         }
     },
-    data: {
-        datasets: [
-            /*{
-                label: 'Feasible frequency region',
-                type: 'line',
-                borderColor: '#cbeac9',
-                data: scaleFreqFeasiblePoints,
-                order: 2
-            },*/
-            {
-                label: 'Implementable',
-                type: 'scatter',
-                borderColor: '#75a6d1',
-                data: scaleValueImplPoints,
-                order: 1
-            }
-        ]
-    }
+    data: dataConfig
 };
 
 const valueFreqConfig = {
     options: {
         responsive: true,
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    title: tooltipCallback
-                }
-            }
-        },
+        plugins: plugins,
         scales: {
             x: {
                 title: {
@@ -446,28 +377,11 @@ const valueFreqConfig = {
             }
         },
         parsing: {
-            xAxisKey: 'value',
+            xAxisKey: 'valueIdeal',
             yAxisKey: 'freq',
         }
     },
-    data: {
-        datasets: [
-            /*{
-                label: 'Feasible frequency region',
-                type: 'line',
-                borderColor: '#cbeac9',
-                data: scaleFreqFeasiblePoints,
-                order: 2
-            },*/
-            {
-                label: 'Implementable',
-                type: 'scatter',
-                borderColor: '#75a6d1',
-                data: valueFreqImplPoints,
-                order: 1
-            }
-        ]
-    }
+    data: dataConfig
 };
 
 window.onload = function () {
