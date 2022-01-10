@@ -44,22 +44,22 @@ function fillScaleFreqFeasiblePoints() {
                 if (freqObtuse < freqFarLimit) {
                     scaleFreqFeasiblePoints.push(
                         // First obtuse corner
-                        {y: sign * scaleCloseLimit/time * shrinkFactor, x: sign * scaleCloseLimit}
+                        {freq: sign * scaleCloseLimit/time * shrinkFactor, scale: sign * scaleCloseLimit}
                     );
                 }
             }
 
             scaleFreqFeasiblePoints.push(
                 // Square corner
-                {y: sign * freqCloseLimit, x: sign * scaleCorner},
+                {freq: sign * freqCloseLimit, scale: sign * scaleCorner},
                 // Second obtuse corner
-                {y: sign * freqCloseLimit, x: sign * Math.min(scaleFarLimit, freqCloseLimit*time / growFactor)},
+                {freq: sign * freqCloseLimit, scale: sign * Math.min(scaleFarLimit, freqCloseLimit*time / growFactor)},
             );
         }
         else {
             scaleFreqFeasiblePoints.push(
                 // Corner (acute)
-                {y: sign * freqAcute, x: sign * scaleCloseLimit}
+                {freq: sign * freqAcute, scale: sign * scaleCloseLimit}
             );
         }
 
@@ -87,6 +87,11 @@ function fillScaleFreqFeasiblePoints() {
 
     // close loop
     scaleFreqFeasiblePoints.push(scaleFreqFeasiblePoints[0]);
+
+    scaleFreqFeasiblePoints.forEach(point =>
+        // Don't round - this is the idealised limit
+        point.value = time * point.freq / point.scale
+    );
 }
 
 function fillScaleFreqImplPoints() {
@@ -113,7 +118,11 @@ function fillScaleFreqImplPoints() {
                         scale => {
                             if (scale > scaleMax)
                                 return false;
-                            row.push({x: scale, y: freq});
+                            row.push({
+                                scale: scale,
+                                freq: freq,
+                                value: Math.round(time * freq / scale)
+                            });
                             return true;
                         }
                     );
@@ -130,8 +139,12 @@ function fillScaleValueImplPoints() {
         ...allScales.flatMap(
             // There aren't many frequencies (compared to scales and values), so just filter this
             scale => availFreq
-                .map(freq => ({x: scale, y: Math.round(time * freq / scale)}))
-                .filter(point => point.y >= 1 && point.y <= valueMax)
+                .map(freq => ({
+                    scale: scale,
+                    freq: freq,
+                    value: Math.round(time * freq / scale),
+                }))
+                .filter(point => point.value >= 1 && point.value <= valueMax)
         )
     )
 }
@@ -141,8 +154,12 @@ function fillValueFreqImplPoints() {
     valueFreqImplPoints.push(
         ...availFreq.flatMap(
             freq => allScales
-                .map(scale => ({x: Math.round(time * freq / scale), y: freq}))
-                .filter(point => point.x >= 1 && point.x <= valueMax)
+                .map(scale => ({
+                    scale: scale,
+                    freq: freq,
+                    value: Math.round(time * freq / scale),
+                }))
+                .filter(point => point.value >= 1 && point.value <= valueMax)
         )
     )
 }
@@ -172,8 +189,10 @@ const renderPoint = (function() {
             }
         );
 
-    return function(scale, freq) {
-        const valueIdeal = -time * freq / scale;
+    return function(item) {
+        const freq = item.raw.freq,
+              scale = item.raw.scale,
+              valueIdeal = -time * freq / scale;
 
         const valueActual = Math.round(valueIdeal),
             timeActual = -valueActual * scale / freq,
@@ -198,10 +217,7 @@ function tooltipCallback(items) {
                 'Timer limit: ' + timerFmt.format(valueIdeal),
             ];
 
-        const
-            scale = item.parsed.x,
-            freq = item.parsed.y;
-        return renderPoint(scale, freq);
+        return renderPoint(item);
     });
 }
 
@@ -327,6 +343,10 @@ const scaleFreqConfig = {
                 type: 'logarithmic'
             }
         },
+        parsing: {
+            xAxisKey: 'scale',
+            yAxisKey: 'freq',
+        }
     },
     data: {
         datasets: [
@@ -354,7 +374,7 @@ const scaleValueConfig = {
         plugins: {
             tooltip: {
                 callbacks: {
-                    // title: makeTooltipCallback()
+                    title: tooltipCallback
                 }
             }
         },
@@ -374,6 +394,10 @@ const scaleValueConfig = {
                 type: 'logarithmic'
             }
         },
+        parsing: {
+            xAxisKey: 'scale',
+            yAxisKey: 'value',
+        }
     },
     data: {
         datasets: [
@@ -401,7 +425,7 @@ const valueFreqConfig = {
         plugins: {
             tooltip: {
                 callbacks: {
-                    // title: makeTooltipCallback()
+                    title: tooltipCallback
                 }
             }
         },
@@ -421,6 +445,10 @@ const valueFreqConfig = {
                 type: 'logarithmic'
             }
         },
+        parsing: {
+            xAxisKey: 'value',
+            yAxisKey: 'freq',
+        }
     },
     data: {
         datasets: [
