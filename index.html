@@ -11,8 +11,11 @@
       font-family: 'Calibri', sans-serif;
     }
     canvas {
-      width: 800px;
+      width: 900px;
       height: 390px;
+    }
+    .parameters {
+      padding-left: 100px;
     }
   </style>
 </head>
@@ -32,73 +35,75 @@
         <td>
           <canvas id="scaleValueChart"></canvas>
         </td>
-      </tr>
-    </tbody>
-  </table>
 
-  <h2>Parameters</h2>
+        <td class="parameters">
+          <h2>Parameters</h2>
 
-  <p>
-    <label for="time">Timer expiry, seconds</label><br/>
-    <input id="time" type="number" min="0" step="any" value="0.1" />
-  </p>
-
-  <p>
-    <label for="bits">Timer width, bits</label><br/>
-    <input id="bits" type="number" min="1" step="1" value="16" list="preferred_bits" />
-    <datalist id="preferred_bits">
-      <option value="8"></option>
-      <option value="16"></option>
-      <option value="32"></option>
-      <option value="64"></option>
-    </datalist>
-  </p>
-
-  <p>
-    <label for="freq">Clock frequencies, Hz, comma-separated</label><br/>
-    <input id="freq" type="text" value="31e3, 1e6, 2e6, 4e6, 8e6, 12e6, 16e6, 32e6, 48e6, 64e6" />
-  </p>
-
-  <p>
-    <label for="scale1">Scaler A factors, comma-separated</label><br/>
-    <input id="scale1" type="text" value="1" />
-  </p>
-
-  <p>
-    <label for="scale2">Scaler B factors, comma-separated</label><br/>
-    <input id="scale2" type="text" value="1" />
-  </p>
-
-  <div>Range Scalers C, D</div>
-  <table>
-    <thead>
-      <tr>
-        <th>2<sup>x</sup></th>
-        <th>Min incl.</th>
-        <th>Max excl.</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>
-          <input id="scale3_exp" type="checkbox" checked="checked" />
-        </td>
-        <td>
-          <input id="scale3_min" type="number" min="0" step="1" value="0" />
-        </td>
-        <td>
-          <input id="scale3_max" type="number" min="0" step="1" value="16" />
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <input id="scale4_exp" type="checkbox" />
-        </td>
-        <td>
-          <input id="scale4_min" type="number" min="0" step="1" value="1" />
-        </td>
-        <td>
-          <input id="scale4_max" type="number" min="0" step="1" value="17" />
+          <p>
+            <label for="time">Timer expiry, seconds</label><br/>
+            <input id="time" type="number" min="0" step="any" value="0.1" />
+          </p>
+        
+          <p>
+            <label for="bits">Timer width, bits</label><br/>
+            <input id="bits" type="number" min="1" step="1" value="16" list="preferred_bits" />
+            <datalist id="preferred_bits">
+              <option value="8"></option>
+              <option value="16"></option>
+              <option value="32"></option>
+              <option value="64"></option>
+            </datalist>
+          </p>
+        
+          <p>
+            <label for="freq">Clock frequencies, Hz, comma-separated</label><br/>
+            <input id="freq" type="text" value="31e3, 1e6, 2e6, 4e6, 8e6, 12e6, 16e6, 32e6, 48e6, 64e6" />
+          </p>
+        
+          <p>
+            <label for="scale1">Scaler A factors, comma-separated</label><br/>
+            <input id="scale1" type="text" value="1" />
+          </p>
+        
+          <p>
+            <label for="scale2">Scaler B factors, comma-separated</label><br/>
+            <input id="scale2" type="text" value="1" />
+          </p>
+        
+          <div>Range Scalers C, D</div>
+          <table>
+            <thead>
+              <tr>
+                <th>2<sup>x</sup></th>
+                <th>Min incl.</th>
+                <th>Max excl.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <input id="scale3_exp" type="checkbox" checked="checked" />
+                </td>
+                <td>
+                  <input id="scale3_min" type="number" min="0" step="1" value="0" />
+                </td>
+                <td>
+                  <input id="scale3_max" type="number" min="0" step="1" value="16" />
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input id="scale4_exp" type="checkbox" />
+                </td>
+                <td>
+                  <input id="scale4_min" type="number" min="0" step="1" value="1" />
+                </td>
+                <td>
+                  <input id="scale4_max" type="number" min="0" step="1" value="17" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </td>
       </tr>
     </tbody>

@@ -292,18 +292,23 @@ const dataConfig = {
     ]
 };
 
-const plugins = {
-    tooltip: {
-        callbacks: {
-            title: tooltipCallback
+const options = {
+    responsive: false,
+    plugins: {
+        tooltip: {
+            callbacks: {
+                title: tooltipCallback
+            }
         }
-    }
+    },
+    animation: {
+        duration: 0
+    },
 };
 
 const scaleFreqConfig = {
     options: {
-        responsive: true,
-        plugins: plugins,
+        ...options,
         scales: {
             x: {
                 title: {
@@ -330,8 +335,7 @@ const scaleFreqConfig = {
 
 const scaleValueConfig = {
     options: {
-        responsive: true,
-        plugins: plugins,
+        ...options,
         scales: {
             x: {
                 title: {
@@ -358,8 +362,7 @@ const scaleValueConfig = {
 
 const valueFreqConfig = {
     options: {
-        responsive: true,
-        plugins: plugins,
+        ...options,
         scales: {
             x: {
                 title: {
