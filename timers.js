@@ -281,14 +281,14 @@ function makeGraphs() {
                 type: 'line',
                 borderColor: '#cbeac9',
                 data: feasiblePoints,
-                order: 2
+                order: 2,
             },
             {
                 label: 'Implementable',
                 type: 'scatter',
                 borderColor: '#75a6d1',
                 data: implPoints,
-                order: 1
+                order: 1,
             }
         ]
     };
@@ -302,9 +302,10 @@ function makeGraphs() {
                 }
             }
         },
-        animation: {
-            duration: 0
-        },
+        // https://www.chartjs.org/docs/latest/general/performance.html
+        animation: false,
+        parsing: false,
+        spanGaps: true, 
     };
 
     const scaleFreqConfig = {
