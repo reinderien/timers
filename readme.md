@@ -15,10 +15,11 @@ partially represent the possible configuration space for timer 0 on a
 - Representation of multiple, fixed clock source frequencies
 - Representation of multiple scalers (potentially pre-scalers or post-scalers) 
   showing how their factor product affects the configuration space
-- Scaler series as predefined, linear-range or binary-exponential-range mode
+- Scaler series in predefined, linear-range, or binary-exponential-range mode
 - Display of the feasible configuration space region as a projection of the
   actual bounding polytope
 - Mouse-over information including timer value and accuracy
+- Solution-culling by maximum absolute relative error
 
 ## Math
 
