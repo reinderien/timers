@@ -273,121 +273,121 @@ function attachHandlers() {
     parseScale();
 }
 
-const dataConfig = {
-    datasets: [
-        {
-            label: 'Feasible region',
-            type: 'line',
-            borderColor: '#cbeac9',
-            data: feasiblePoints,
-            order: 2
-        },
-        {
-            label: 'Implementable',
-            type: 'scatter',
-            borderColor: '#75a6d1',
-            data: implPoints,
-            order: 1
-        }
-    ]
-};
-
-const options = {
-    responsive: false,
-    plugins: {
-        tooltip: {
-            callbacks: {
-                title: tooltipCallback
-            }
-        }
-    },
-    animation: {
-        duration: 0
-    },
-};
-
-const scaleFreqConfig = {
-    options: {
-        ...options,
-        scales: {
-            x: {
-                title: {
-                    display: true,
-                    text: 'scale'
-                },
-                type: 'logarithmic'
+function makeGraphs() {
+    const dataConfig = {
+        datasets: [
+            {
+                label: 'Feasible region',
+                type: 'line',
+                borderColor: '#cbeac9',
+                data: feasiblePoints,
+                order: 2
             },
-            y: {
-                title: {
-                    display: true,
-                    text: 'freq (Hz)'
-                },
-                type: 'logarithmic'
+            {
+                label: 'Implementable',
+                type: 'scatter',
+                borderColor: '#75a6d1',
+                data: implPoints,
+                order: 1
+            }
+        ]
+    };
+
+    const options = {
+        responsive: false,
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    title: tooltipCallback
+                }
             }
         },
-        parsing: {
-            xAxisKey: 'scale',
-            yAxisKey: 'freq',
-        }
-    },
-    data: dataConfig
-};
+        animation: {
+            duration: 0
+        },
+    };
 
-const scaleValueConfig = {
-    options: {
-        ...options,
-        scales: {
-            x: {
-                title: {
-                    display: true,
-                    text: 'scale'
+    const scaleFreqConfig = {
+        options: {
+            ...options,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'scale'
+                    },
+                    type: 'logarithmic'
                 },
-                type: 'logarithmic'
+                y: {
+                    title: {
+                        display: true,
+                        text: 'freq (Hz)'
+                    },
+                    type: 'logarithmic'
+                }
             },
-            y: {
-                title: {
-                    display: true,
-                    text: 'timer value (negated)'
-                },
-                type: 'logarithmic'
+            parsing: {
+                xAxisKey: 'scale',
+                yAxisKey: 'freq',
             }
         },
-        parsing: {
-            xAxisKey: 'scale',
-            yAxisKey: 'valueIdeal',
-        }
-    },
-    data: dataConfig
-};
+        data: dataConfig
+    };
 
-const valueFreqConfig = {
-    options: {
-        ...options,
-        scales: {
-            x: {
-                title: {
-                    display: true,
-                    text: 'timer value (negated)'
+    const scaleValueConfig = {
+        options: {
+            ...options,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'scale'
+                    },
+                    type: 'logarithmic'
                 },
-                type: 'logarithmic'
+                y: {
+                    title: {
+                        display: true,
+                        text: 'timer value (negated)'
+                    },
+                    type: 'logarithmic'
+                }
             },
-            y: {
-                title: {
-                    display: true,
-                    text: 'freq (Hz)'
-                },
-                type: 'logarithmic'
+            parsing: {
+                xAxisKey: 'scale',
+                yAxisKey: 'valueIdeal',
             }
         },
-        parsing: {
-            xAxisKey: 'valueIdeal',
-            yAxisKey: 'freq',
-        }
-    },
-    data: dataConfig
-};
+        data: dataConfig
+    };
 
-window.onload = function () {
+    const valueFreqConfig = {
+        options: {
+            ...options,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'timer value (negated)'
+                    },
+                    type: 'logarithmic'
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'freq (Hz)'
+                    },
+                    type: 'logarithmic'
+                }
+            },
+            parsing: {
+                xAxisKey: 'valueIdeal',
+                yAxisKey: 'freq',
+            }
+        },
+        data: dataConfig
+    };
+
     scaleFreqGraph = new Chart(
         document.getElementById('scaleFreqChart').getContext('2d'), 
         scaleFreqConfig);
@@ -397,6 +397,10 @@ window.onload = function () {
     valueFreqGraph = new Chart(
         document.getElementById('valueFreqChart').getContext('2d'), 
         valueFreqConfig);
+}
+
+window.onload = function () {
+    makeGraphs();
     attachHandlers();
     updateGraphs();
 };
