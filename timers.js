@@ -65,9 +65,15 @@ function fillFeasiblePoints() {
             );
         }
         else {
+            if (freqObtuse <= freqFarLimit) {
+                feasiblePoints.push(
+                    // Corner (obtuse)
+                    makePoint(sign * freqObtuse, sign * scaleCloseLimit)
+                );
+            }
             feasiblePoints.push(
                 // Corner (acute)
-                makePoint(sign * freqAcute, sign * scaleCloseLimit)
+                makePoint(sign * freqAcute, sign * scaleCloseLimit),
             );
         }
 
