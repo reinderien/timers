@@ -3,7 +3,7 @@
 "use strict";
 
 // initialised on parse
-var time, valueMax, availFreq, allScales, 
+var time, valueMax, availFreq, allScales, cullError,
     scaleFreqGraph, scaleValueGraph, valueFreqGraph;
 
 // these references stay in-place and associated to the graph config;
@@ -15,12 +15,16 @@ const
 function sortPredicate(a, b) { return a - b; }
 
 function makePoint(freq, scale) {
-    const valueIdeal = time * freq / scale;
+    const valueIdeal = time * freq / scale,
+          valueActual = Math.round(valueIdeal),
+          timeActual =  valueActual * scale / freq
     return {
         scale: scale,
         freq: freq,
         valueIdeal: valueIdeal,
-        valueActual: Math.round(valueIdeal),
+        valueActual: valueActual,
+        timeActual: timeActual,
+        error: timeActual/time - 1
     };
 }
 
@@ -127,7 +131,10 @@ function fillImplPoints() {
                 scale => {
                     if (scale > scaleMax)
                         return false;
-                    implPoints.push(makePoint(freq, scale));
+                    
+                    const point = makePoint(freq, scale);
+                    if (Math.abs(point.error) <= cullError)
+                        implPoints.push(point);
                     return true;
                 }
             );
@@ -170,17 +177,14 @@ const tooltipCallback = (function() {
                     'Freq limit: ' + freqFmt.format(raw.freq),
                 ];
             
-            const timeActual = raw.valueActual * raw.scale / raw.freq,
-                error = timeActual/time - 1;
-
             return [
                 'f = ' + freqFmt.format(raw.freq) + ' Hz',
                 'scale = ' + scaleFmt.format(raw.scale),
                 'tmr_idl = ' + timerFmt.format(-raw.valueIdeal),
                 'tmr_act = ' + timerFmt.format(-raw.valueActual),
                 't_idl = ' + timeFmt.format(time) + ' s',
-                't_act = ' + timeFmt.format(timeActual) + ' s',
-                'rel_err = ' + errorFmt.format(error),
+                't_act = ' + timeFmt.format(raw.timeActual) + ' s',
+                'rel_err = ' + errorFmt.format(raw.error),
             ];
         }
     );
@@ -200,6 +204,7 @@ function attachHandlers() {
         timeInput = document.getElementById('time'),
         bitsInput = document.getElementById('bits'),
         freqInput = document.getElementById('freq'),
+        errorInput = document.getElementById('cull_error'),
         specifiedScalerInputs = [
             '1', '2'
         ].map(id => document.getElementById('scale' + id)),
@@ -222,6 +227,9 @@ function attachHandlers() {
     }
     function parseFreq() {
         availFreq = freqInput.value.split(',').map(parseFloat);
+    }
+    function parseError() {
+        cullError = parseFloat(errorInput.value);
     }
     function parseScale() {
         const specified = specifiedScalerInputs.map(
@@ -256,26 +264,31 @@ function attachHandlers() {
         allScales.sort(sortPredicate);
     }
 
-    timeInput.addEventListener(
-        'change', () => {parseTime(); updateGraphs()});
-    bitsInput.addEventListener(
-        'change', () => {parseBits(); updateGraphs()});
-    freqInput.addEventListener(
-        'change', () => {parseFreq(); updateGraphs()});
+    function attachChange(input, parse) {
+        input.addEventListener(
+            'change',
+            () => {
+                parse();
+                updateGraphs();
+            },
+        );
+        parse(); // first call for initialisation
+    }
 
-    function handleScale(input) {
+    attachChange(timeInput, parseTime);
+    attachChange(bitsInput, parseBits);
+    attachChange(freqInput, parseFreq);
+    attachChange(errorInput, parseError);
+
+    function attachScaleChange(input) {
         input.addEventListener(
             'change', () => {parseScale(); updateGraphs()}
         );
     }
-    specifiedScalerInputs.forEach(handleScale);
+    specifiedScalerInputs.forEach(attachScaleChange);
     rangeScaleInputs.forEach(
-        rangeScale => Object.values(rangeScale).forEach(handleScale)
+        rangeScale => Object.values(rangeScale).forEach(attachScaleChange)
     );
-
-    parseTime();
-    parseBits();
-    parseFreq();
     parseScale();
 }
 
