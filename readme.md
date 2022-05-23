@@ -1,5 +1,8 @@
 # Embedded Timer Explorer
 
+This is [hosted live on GitHub Pages](https://reinderien.github.io/timers/)
+if you're looking for that.
+
 This is a toy design analysis utility meant to support decisions around 
 configuring a 
 [timer](https://en.wikipedia.org/wiki/Programmable_interval_timer) 
